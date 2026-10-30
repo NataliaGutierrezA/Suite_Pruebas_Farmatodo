@@ -1,0 +1,1 @@
+rootProject.name = "page_object_base_project"

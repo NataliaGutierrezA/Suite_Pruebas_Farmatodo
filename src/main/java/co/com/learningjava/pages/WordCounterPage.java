@@ -20,13 +20,12 @@ public class WordCounterPage {
 
     private final By textBox          = By.id("box");
     private final By counter          = By.cssSelector("#top_counter .counted");
-    private final By keywordToggle    = By.cssSelector("a[data-target='#kwd-accordion']");
+    private final By keywordToggle    = By.cssSelector("[data-target='#kwd-accordion'], [data-bs-target='#kwd-accordion']");
     private final By keywordPanel     = By.id("kwd-accordion");
     private final By keywordRows      = By.cssSelector("#kwd-accordion-data a.list-group-item");
     private final By keywordWord      = By.cssSelector("span.word");
-    private final By keywordValue     = By.cssSelector("span.badge");
     private final By detailRows       = By.cssSelector("#details_panel li.list-group-item[data-title]");
-    private final By detailValue      = By.cssSelector("span.badge");
+    private final By badgeValue       = By.cssSelector("span.badge");
 
     public WordCounterPage(WebDriver driver) {
         this.driver = driver;
@@ -50,7 +49,7 @@ public class WordCounterPage {
 
     @Step("Obtener el resumen del contador")
     public String getCounterSummary() {
-        String summary = driver.findElement(counter).getText().trim();
+        String summary = wait.until(ExpectedConditions.visibilityOfElementLocated(counter)).getText().trim();
         ScreenshotUtil.attach(driver, "Resumen del contador");
         return summary;
     }
@@ -63,7 +62,7 @@ public class WordCounterPage {
 
         Map<String, String> keywords = new LinkedHashMap<>();
         for (WebElement row : driver.findElements(keywordRows)) {
-            keywords.put(textOf(row.findElement(keywordWord)), textOf(row.findElement(keywordValue)));
+            keywords.put(textOf(row.findElement(keywordWord)), textOf(row.findElement(badgeValue)));
         }
         ScreenshotUtil.attach(driver, "Keyword Density");
         return keywords;
@@ -72,18 +71,20 @@ public class WordCounterPage {
     /** Devuelve etiqueta -> valor de los items visibles de la seccion Details (ej. "Unique Words" -> "5"). */
     @Step("Obtener los detalles del texto")
     public Map<String, String> getDetails() {
+        wait.until(ExpectedConditions.presenceOfElementLocated(detailRows));
         Map<String, String> details = new LinkedHashMap<>();
         for (WebElement row : driver.findElements(detailRows)) {
             if (!row.isDisplayed()) continue;
-            details.put(row.getAttribute("data-title"), textOf(row.findElement(detailValue)));
+            details.put(row.getAttribute("data-title"), textOf(row.findElement(badgeValue)));
         }
         ScreenshotUtil.attach(driver, "Details");
         return details;
     }
 
     private void expandKeywordDensity() {
-        if (!driver.findElement(keywordPanel).isDisplayed()) {
-            driver.findElement(keywordToggle).click();
+        WebElement panel = wait.until(ExpectedConditions.presenceOfElementLocated(keywordPanel));
+        if (!panel.isDisplayed()) {
+            wait.until(ExpectedConditions.elementToBeClickable(keywordToggle)).click();
             wait.until(ExpectedConditions.visibilityOfElementLocated(keywordPanel));
         }
     }

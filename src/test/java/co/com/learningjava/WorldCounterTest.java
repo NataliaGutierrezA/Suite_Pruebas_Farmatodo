@@ -2,6 +2,8 @@ package co.com.learningjava;
 
 import co.com.learningjava.config.ConfigReader;
 import co.com.learningjava.pages.WordCounterPage;
+import co.com.learningjava.utils.TextFileReader;
+import co.com.learningjava.utils.WordFrequencyCounter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,28 +14,39 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class WorldCounterTest extends BaseTest {
 
-    private static final String TEXT =
-            "farmatodo farmatodo farmatodo farmatodo farmatodo cuida cuida tu salud\n"
-                    + "farmatodo cuida toda tu salud";
+    private static final String FILE = "texto.txt";
 
     private WordCounterPage wordCounter;
+    private WordFrequencyCounter expected;
 
     @BeforeEach
     void openPage() {
+        // Texto y resultado esperado salen del archivo, no de valores escritos a mano
+        expected = new WordFrequencyCounter(TextFileReader.readLines(FILE));
+
         wordCounter = new WordCounterPage(driver);
         wordCounter.open(ConfigReader.get("baseUrl"));
-        wordCounter.writeText(TEXT);
+        wordCounter.writeText(TextFileReader.readText(FILE));
     }
 
     @Test
     void validarKeywordDensity() {
         Map<String, String> keywords = wordCounter.getKeywordDensity();
-        System.out.println("Keyword Density: " + keywords);
+        System.out.println("Keyword Density (pagina): " + keywords);
+        System.out.println("Frecuencias (esperado): " + expected.getFrequencies());
 
-        assertEquals("6 (43%)", keywords.get("farmatodo"));
-        assertEquals("3 (21%)", keywords.get("cuida"));
-        assertEquals("2 (14%)", keywords.get("tu"));
-        assertEquals("2 (14%)", keywords.get("salud"));
+        assertTrue(!keywords.isEmpty(), "La pagina no mostro palabras en Keyword Density");
+
+        // Cada palabra que muestra la pagina debe coincidir con la calculada desde el archivo
+        keywords.forEach((word, value) ->
+                assertEquals(expected.getDensity(word), value, "Densidad de '" + word + "'"));
+
+        // Toda palabra repetida en el archivo debe aparecer en la pagina
+        expected.getFrequencies().forEach((word, count) -> {
+            if (count > 1) {
+                assertTrue(keywords.containsKey(word), "La pagina no muestra la palabra '" + word + "'");
+            }
+        });
     }
 
     @Test
@@ -41,9 +54,9 @@ public class WorldCounterTest extends BaseTest {
         Map<String, String> details = wordCounter.getDetails();
         System.out.println("Details: " + details);
 
-        assertTrue(wordCounter.getCounterSummary().startsWith("14 words"));
+        assertTrue(wordCounter.getCounterSummary().startsWith(expected.getTotalWords() + " words"));
 
-        assertEquals("14", details.get("Words"));
-        assertEquals("99", details.get("Characters"));
+        assertEquals(String.valueOf(expected.getTotalWords()), details.get("Words"));
+        assertEquals(String.valueOf(expected.getTotalCharacters()), details.get("Characters"));
     }
 }
